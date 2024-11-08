@@ -18,7 +18,8 @@ library(sdcMicro)
 
 ```{r}
 data <- read_excel("F/private_dataF.xlsx")
-sdc <- createSdcObj(dat = data, keyVars = c("sex", "zip", "education", "citizenship", "marital_status", "party"))
+keyVars <- c("sex", "dob", "zip", "citizenship","marital_status", "party")
+sdc <- createSdcObj(dat = data, keyVars = keyVars)
 ```
 
 ### Generalisation and Suprresion - Top/Bottom coding to make age groups and broader regions??. K-anonimity as well!
@@ -31,11 +32,12 @@ data$age <- cut(data$age, breaks = c(-Inf, 30, 50, 70, Inf), labels = c("Under 3
 # I dont think this one makes sense
 data$zip_region <- ifelse(data$zip %in% c(2100, 2200), "Region 1", "Region 2")
 
-# updating the `sdcMicro` object with the generalized data
-sdc <- createSdcObj(dat = data, keyVars = c("sex", "zip_region", "education", "citizenship", "marital_status", "party"))
+# Adding "Danish_Status" column based on citizenship
+data$danish_Status <- ifelse(data$citizenship == "Denmark", "Denmark", "Non-Danish")
 
-# applying k-anonymity
-sdc <- kAnon(sdc, k = 5)
+# updating the `sdcMicro` object with the generalized data
+newKeyVars = c("sex", "age", "zip_region", "danish_Status", "marital_status", "party")
+sdc <- createSdcObj(dat = data, keyVars = newKeyVars)
 ```
 
 ### applying PRAM now to add noise to categories like party and marital_status. Randomised response will also be used on party as it is more sensitive. Is this overkill??
@@ -43,37 +45,40 @@ sdc <- kAnon(sdc, k = 5)
 ```{r}
 # applying PRAM on `party` and `marital_status`
 sdc <- pram(sdc, variables = c("party", "marital_status"))
-# adding some noise to sensitive variables
-#sdc <- addNoise(sdc, noise = 0.3) #I cant get it to work.
 ```
-### Microaggregation for numeric data
 
 ```{r}
-# applying microaggregation on `evote`
-sdc <- microaggregation(sdc, method = "mdav", variables = "evote") # I can't get it to work again
+# Suppressing sensitive variable values
+sdc <- localSupp(sdc, threshold = 0.5, keyVar = "party")
+sdc <- localSupp(sdc, threshold = 0.5, keyVar = "marital_status")
 ```
-### Laplace Mechanism for Differential Privacy
+
+### Removing the old columns
 ```{r}
-# applying Laplace noise to `evote` with an epsilon value for privacy
-sdc <- addNoise(sdc, noise = "differential", epsilon = 1) # I can't get it to work again. Something with the length of some of sdc df
+data2 <- extractManipData(sdc)
+
+# Remove columns using `dplyr::select()`
+data2 <- data2 %>%
+  select(-dob, -zip, -education, -name, -citizenship)  # Add more columns to remove as needed
+
+# Recreate the sdc object with the modified data
+sdc <- createSdcObj(dat = data2, keyVars = newKeyVars)
 ```
+
 ### Calculation of disclosure risks
 ```{r}
 # Calculate and display disclosure risk
-risk_value <- measure_risk(sdc)
+risk_value <- measure_risk(sdc, keyVars = newKeyVars)
 print(risk_value)
-```
-```{r}
-help(package = "sdcMicro")  # This will list available functions and their documentation
 ```
 
 ### Extracting the anonymized data now
+
 ```{r}
 # Extract anonymized data
 anonymized_data <- extractManipData(sdc)
-anonymized_data
+# anonymized_data <- anonymized_data[, !(names(anonymized_data) %in% c("dob", "zip", "citizenship", "name"))]
 ```
-
 
 
 
