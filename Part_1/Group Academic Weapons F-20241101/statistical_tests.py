@@ -10,10 +10,28 @@ import matplotlib.pyplot as plt
 private_data_path = 'private_dataF.xlsx'  
 public_data_register_path = 'public_data_registerF.xlsx'  
 public_data_results_path = 'public_data_resultsF.xlsx'
+anonymized_data = '../anonymized_dataF_with_evotes.csv'
 
+anonymized_data = pd.read_excel(anonymized_data, engine='openpyxl')
 private_data = pd.read_excel(private_data_path, engine='openpyxl')
 public_data_register = pd.read_excel(public_data_register_path, engine='openpyxl')
 public_data_results = pd.read_excel(public_data_results_path, engine='openpyxl')
+
+#bar graph of party preference
+party_counts = private_data['party'].value_counts()
+party_counts.plot(kind='bar', color='skyblue')
+plt.title('Party Preference Distribution')
+plt.xlabel('Party')
+plt.ylabel('Count')
+plt.show()
+
+# from public data results get the total for each party and plot as a bar graph
+party_votes = pd.DataFrame([623,366],["Green","Red"],columns=["Votes"])
+party_votes.plot(kind='bar', color='skyblue')
+plt.title('Total Votes per Party')
+plt.xlabel('Party')
+plt.ylabel('Total Votes')
+plt.show()
 
 # Calculate age from dob
 df['age'] = df['dob'].apply(lambda x: datetime.now().year - x.year)
