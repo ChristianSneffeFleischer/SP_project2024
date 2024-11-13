@@ -11,14 +11,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(readxl)
 library(sdcMicro)
+library(readr)
 ?sdcMicro
+set.seed(123)
 ```
 
 ### Loading in data from xlsx and formatting by creation of sdc object
 
 ```{r}
 data <- read_excel("F/private_dataF.xlsx")
-keyVars <- c("sex", "dob", "zip", "citizenship","marital_status", "party")
+keyVars <- c("sex", "dob", "zip", "citizenship","marital_status")
 sdc <- createSdcObj(dat = data, keyVars = keyVars)
 ```
 
@@ -30,13 +32,13 @@ data$age <- cut(data$age, breaks = c(-Inf, 30, 50, 70, Inf), labels = c("Under 3
 
 # generalizing `zip` into broader regions
 # I dont think this one makes sense
-data$zip_region <- ifelse(data$zip %in% c(2100, 2200), "Region 1", "Region 2")
+# data$zip_region <- ifelse(data$zip %in% c(2100, 2200), "Region 1", "Region 2")
 
 # Adding "Danish_Status" column based on citizenship
 data$danish_Status <- ifelse(data$citizenship == "Denmark", "Denmark", "Non-Danish")
 
 # updating the `sdcMicro` object with the generalized data
-newKeyVars = c("sex", "age", "zip_region", "danish_Status", "marital_status", "party")
+newKeyVars = c("sex", "age", "danish_Status", "marital_status")
 sdc <- createSdcObj(dat = data, keyVars = newKeyVars)
 ```
 
@@ -44,12 +46,12 @@ sdc <- createSdcObj(dat = data, keyVars = newKeyVars)
 
 ```{r}
 # applying PRAM on `party` and `marital_status`
-sdc <- pram(sdc, variables = c("party", "marital_status"))
+#sdc <- pram(sdc, variables = c("sex", "marital_status"), strata_variables = "party")
 ```
 
 ```{r}
 # Suppressing sensitive variable values
-sdc <- localSupp(sdc, threshold = 0.5, keyVar = "party")
+sdc <- localSupp(sdc, threshold = 0.5, keyVar = "sex")
 sdc <- localSupp(sdc, threshold = 0.5, keyVar = "marital_status")
 ```
 
@@ -57,18 +59,21 @@ sdc <- localSupp(sdc, threshold = 0.5, keyVar = "marital_status")
 ```{r}
 data2 <- extractManipData(sdc)
 
+data2 <- data2 %>% group_by(party) %>% mutate(sex_new = sample(sex))
+data2 <- data2 %>% group_by(party) %>% mutate(marital_status_new = sample(marital_status))
+
 # Remove columns using `dplyr::select()`
 data2 <- data2 %>%
-  select(-dob, -zip, -education, -name, -citizenship)  # Add more columns to remove as needed
+  select(-dob, -name, -citizenship, -sex, -marital_status, -zip)  # Add more columns to remove as needed
 
 # Recreate the sdc object with the modified data
-sdc <- createSdcObj(dat = data2, keyVars = newKeyVars)
+sdc <- createSdcObj(dat = data2, keyVars = c("sex_new", "age", "danish_Status", "marital_status_new"))
 ```
 
 ### Calculation of disclosure risks
 ```{r}
 # Calculate and display disclosure risk
-risk_value <- measure_risk(sdc, keyVars = newKeyVars)
+risk_value <- measure_risk(sdc, keyVars = c("sex_new", "age", "danish_Status", "marital_status_new"))
 print(risk_value)
 ```
 
@@ -77,8 +82,13 @@ print(risk_value)
 ```{r}
 # Extract anonymized data
 anonymized_data <- extractManipData(sdc)
-# anonymized_data <- anonymized_data[, !(names(anonymized_data) %in% c("dob", "zip", "citizenship", "name"))]
+write_csv(anonymized_data, "/Users/chris/Desktop/ITU/5thsem/SP/anonymized_dataF.csv")
 ```
 
-
+```{r}
+#anonymized_data_2 <- anonymized_data %>%
+#  select(-education, -evote, -party)
+#uniques <- anonymized_data_2 %>% distinct()
+#uniques
+```
 
