@@ -59,8 +59,8 @@ sdc <- localSupp(sdc, threshold = 0.5, keyVar = "marital_status")
 ```{r}
 data2 <- extractManipData(sdc)
 
-data2 <- data2 %>% group_by(party) %>% mutate(sex_new = sample(sex))
-data2 <- data2 %>% group_by(party) %>% mutate(marital_status_new = sample(marital_status))
+data2 <- data2 %>% group_by(party, evote) %>% mutate(sex_new = sample(sex))
+data2 <- data2 %>% group_by(party, evote) %>% mutate(marital_status_new = sample(marital_status))
 
 # Remove columns using `dplyr::select()`
 data2 <- data2 %>%
